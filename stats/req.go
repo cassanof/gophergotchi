@@ -30,8 +30,6 @@ func MakeReqContext(apikey string, username string) ReqContext {
 
 // get the latest 67 events made by the given user
 func (r ReqContext) GetFeedByUser(user string) EventFeed {
-
-	// TODO: change back to 67
 	resp := r.makeGetReq(fmt.Sprintf("https://api.github.com/users/%s/events?per_page=67", user))
 
 	body, err := ioutil.ReadAll(resp.Body)
