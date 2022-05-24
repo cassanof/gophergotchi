@@ -13,26 +13,44 @@ import (
 	"github.com/elleven11/gophergotchi/utils"
 )
 
+type ReqContext struct {
+	apikey   string
+	username string
+	client   *http.Client
+}
+
+func MakeReqContext(apikey string, username string) ReqContext {
+	req := ReqContext{apikey: apikey, username: username, client: nil}
+	client := &http.Client{
+		CheckRedirect: req.redirectPolicyFunc,
+	}
+	req.client = client
+	return req
+}
+
 // get the latest 67 events made by the given user
-func GetFeedByUser(user string) interface{} {
+func (r ReqContext) GetFeedByUser(user string) EventFeed {
+
 	// TODO: change back to 67
-	resp, err := http.Get(fmt.Sprintf("https://api.github.com/users/%s/events?per_page=30", user))
-	utils.Check(err)
+	resp := r.makeGetReq(fmt.Sprintf("https://api.github.com/users/%s/events?per_page=67", user))
 
 	body, err := ioutil.ReadAll(resp.Body)
 	utils.Check(err)
+
+	fmt.Printf("%v\n", r.apikey)
+	fmt.Printf("%v\n", r.username)
+	fmt.Printf("%v", string(body))
 
 	var objmap []map[string]json.RawMessage
 	err = json.Unmarshal(body, &objmap)
 	utils.Check(err)
 
-	// feed := make(EventFeed, 67)
-	feed := make([]interface{}, 67)
+	feed := make(EventFeed, 67)
 	var wg sync.WaitGroup
 	for i, ev := range objmap {
 		wg.Add(1)
 		go func(i int, ev map[string]json.RawMessage) {
-			feed[i] = parseEvent(ev)
+			feed[i] = r.parseEvent(ev)
 			wg.Done()
 		}(i, ev)
 	}
@@ -41,12 +59,31 @@ func GetFeedByUser(user string) interface{} {
 	return feed
 }
 
+func (r ReqContext) redirectPolicyFunc(req *http.Request, via []*http.Request) error {
+	req.SetBasicAuth(r.username, r.apikey)
+	return nil
+}
+
+func (r ReqContext) makeGetReq(url string) *http.Response {
+	req, err := http.NewRequest(
+		"GET",
+		url,
+		nil)
+	utils.Check(err)
+
+	req.SetBasicAuth(r.username, r.apikey)
+
+	resp, err := r.client.Do(req)
+	utils.Check(err)
+	return resp
+}
+
 // parses the given event json map into a proper proper event data structure
-func parseEvent(data map[string]json.RawMessage) IEvent {
+func (r ReqContext) parseEvent(data map[string]json.RawMessage) IEvent {
 	evType := strings.Trim(string(data["type"]), "\"")
 	switch evType {
 	case "PushEvent":
-		return parsePushEvent(data)
+		return r.parsePushEvent(data)
 	}
 
 	// if we don't care about the given one, we return nil.
@@ -63,7 +100,7 @@ func parseDate(dateData json.RawMessage) time.Time {
 
 // parses the given data into a PushEvent. it must be validated before,
 // to ensure that this is indeed a push event
-func parsePushEvent(data map[string]json.RawMessage) PushEvent {
+func (r ReqContext) parsePushEvent(data map[string]json.RawMessage) PushEvent {
 	date := parseDate(data["created_at"])
 
 	// get payload
@@ -79,14 +116,15 @@ func parsePushEvent(data map[string]json.RawMessage) PushEvent {
 	err = json.Unmarshal(payload["commits"], &commitData)
 	utils.Check(err)
 
-	commits := parseCommits(commitData)
+	// commits := parseCommits(commitData)
+	commits := []Commit{}
 
 	return PushEvent{Size: size, Date: date, Commits: commits}
 }
 
 // parses the given list of json into a list of commit stats. it must be validated before,
 // to ensure that these are indeed commit stats
-func parseCommits(commitsData []map[string]json.RawMessage) []Commit {
+func (r ReqContext) parseCommits(commitsData []map[string]json.RawMessage) []Commit {
 	commits := make([]Commit, len(commitsData))
 
 	var wg sync.WaitGroup
@@ -95,8 +133,7 @@ func parseCommits(commitsData []map[string]json.RawMessage) []Commit {
 		go func(i int, commitData map[string]json.RawMessage) {
 			url := strings.Trim(string(commitData["url"]), "\"")
 
-			resp, err := http.Get(url)
-			utils.Check(err)
+			resp := r.makeGetReq(url)
 
 			body, err := ioutil.ReadAll(resp.Body)
 			utils.Check(err)
