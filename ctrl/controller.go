@@ -30,6 +30,7 @@ func (c CtrlContext) Run() {
 				prevEvent = ev
 			}
 		default:
+
 			c.updateRoutine(prevEvent)
 		}
 	}
