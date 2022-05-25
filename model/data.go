@@ -47,5 +47,5 @@ func (e PushEvent) MadeByWho() EventCreated {
 	return MADE_BY_USER
 }
 
-// represents a feed of non-nil events
+// represents a feed of non-nil events. max 67 events
 type EventFeed chan IEvent
