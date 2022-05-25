@@ -28,9 +28,10 @@ func MakeReqContext(apikey string, username string) ReqContext {
 	return req
 }
 
-// get the latest 67 events made by the given user
+// get the latest 67 events made by the given user. errors are unrecoverable.
 func (r ReqContext) GetFeedByUser(user string) EventFeed {
-	resp := r.makeGetReq(fmt.Sprintf("https://api.github.com/users/%s/events?per_page=67", user))
+	resp, err := r.makeGetReq(fmt.Sprintf("https://api.github.com/users/%s/events?per_page=67", user))
+	utils.Check(err)
 
 	body, err := ioutil.ReadAll(resp.Body)
 	utils.Check(err)
@@ -64,9 +65,12 @@ func (r ReqContext) GetFeedByUser(user string) EventFeed {
 	return feed
 }
 
-// gets the last event made by the user
-func (r ReqContext) GetLastEventByUser(user string) IEvent {
-	resp := r.makeGetReq(fmt.Sprintf("https://api.github.com/users/%s/events?per_page=1", user))
+// gets the last event made by the user, returns an error if the request failed
+func (r ReqContext) GetLastEventByUser(user string) (IEvent, error) {
+	resp, err := r.makeGetReq(fmt.Sprintf("https://api.github.com/users/%s/events?per_page=1", user))
+	if err != nil {
+		return nil, err
+	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	utils.Check(err)
@@ -75,7 +79,7 @@ func (r ReqContext) GetLastEventByUser(user string) IEvent {
 	err = json.Unmarshal(body, &objmap)
 	utils.Check(err)
 
-	return r.parseEvent(objmap[0])
+	return r.parseEvent(objmap[0]), nil
 }
 
 func (r ReqContext) redirectPolicyFunc(req *http.Request, via []*http.Request) error {
@@ -83,18 +87,22 @@ func (r ReqContext) redirectPolicyFunc(req *http.Request, via []*http.Request) e
 	return nil
 }
 
-func (r ReqContext) makeGetReq(url string) *http.Response {
+func (r ReqContext) makeGetReq(url string) (*http.Response, error) {
 	req, err := http.NewRequest(
 		"GET",
 		url,
 		nil)
-	utils.Check(err)
+	if err != nil {
+		return nil, err
+	}
 
 	req.SetBasicAuth(r.username, r.apikey)
 
 	resp, err := r.client.Do(req)
-	utils.Check(err)
-	return resp
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
 }
 
 // parses the given event json map into a proper proper event data structure
@@ -145,7 +153,7 @@ func (r ReqContext) parsePushEvent(data map[string]json.RawMessage) PushEvent {
 }
 
 // parses the given list of json into a list of commit stats. it must be validated before,
-// to ensure that these are indeed commit stats
+// to ensure that these are indeed commit stats. errors are unrecoverable.
 func (r ReqContext) parseCommits(commitsData []map[string]json.RawMessage) []Commit {
 	commits := make([]Commit, len(commitsData))
 
@@ -155,7 +163,8 @@ func (r ReqContext) parseCommits(commitsData []map[string]json.RawMessage) []Com
 		go func(i int, commitData map[string]json.RawMessage) {
 			url := strings.Trim(string(commitData["url"]), "\"")
 
-			resp := r.makeGetReq(url)
+			resp, err := r.makeGetReq(url)
+			utils.Check(err)
 
 			body, err := ioutil.ReadAll(resp.Body)
 			utils.Check(err)

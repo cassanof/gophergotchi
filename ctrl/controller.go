@@ -47,7 +47,13 @@ func (c *CtrlContext) updateRoutine(prevEvent model.IEvent) {
 // checks the latest new event, and if its new (based if its not equal to the given event),
 // add it onto the event feed. returns true if the event gets updated.
 func (c *CtrlContext) replenishFeedIfNew(prevEvent model.IEvent) bool {
-	ev := c.reqCtx.GetLastEventByUser(c.user)
+	ev, err := c.reqCtx.GetLastEventByUser(c.user)
+
+	// return false on connection errors
+	if err != nil {
+		return false
+	}
+
 	if ev != nil && ev.GetId() != prevEvent.GetId() {
 		c.evFeed <- ev
 		return true
