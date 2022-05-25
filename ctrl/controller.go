@@ -27,6 +27,7 @@ func (c CtrlContext) Run() {
 		case ev := <-c.evFeed:
 			if ev != nil {
 				fmt.Printf("%v\n", ev.GetDate())
+				prevEvent = ev
 			}
 		default:
 			c.updateSubRoutine(prevEvent)
@@ -48,7 +49,7 @@ func (c *CtrlContext) updateSubRoutine(prevEvent model.IEvent) {
 // add it onto the event feed. returns true if the event gets updated
 func (c *CtrlContext) replenishFeedIfNew(prevEvent model.IEvent) bool {
 	ev := c.reqCtx.GetLastEventByUser(c.user)
-	if ev.GetId() != prevEvent.GetId() {
+	if ev != nil && ev.GetId() != prevEvent.GetId() {
 		c.evFeed <- ev
 		return true
 	}
