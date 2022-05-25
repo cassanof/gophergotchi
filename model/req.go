@@ -39,16 +39,25 @@ func (r ReqContext) GetFeedByUser(user string) EventFeed {
 	err = json.Unmarshal(body, &objmap)
 	utils.Check(err)
 
-	feed := make(EventFeed, 67)
+	// make a list, to then be dumped into the channel. append in reverse
+	listLen := 67
+	events := make([]IEvent, listLen)
 	var wg sync.WaitGroup
 	for i, ev := range objmap {
 		wg.Add(1)
 		go func(i int, ev map[string]json.RawMessage) {
-			feed <- r.parseEvent(ev)
+			events[listLen-i-1] = r.parseEvent(ev)
 			wg.Done()
 		}(i, ev)
 	}
 	wg.Wait()
+
+	feed := make(EventFeed, 67)
+
+	// dump list into channel
+	for _, e := range events {
+		feed <- e
+	}
 
 	return feed
 }
