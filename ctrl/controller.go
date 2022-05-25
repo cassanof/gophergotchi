@@ -30,18 +30,19 @@ func (c CtrlContext) Run() {
 				prevEvent = ev
 			}
 		default:
-			c.updateSubRoutine(prevEvent)
+			c.updateRoutine(prevEvent)
 		}
 	}
 }
 
-// the subroutine that runs updates on the feed every minute until a new event is found.
-func (c *CtrlContext) updateSubRoutine(prevEvent model.IEvent) {
+// a routine that runs updates on the feed every 10 seconds until a new event is found.
+func (c *CtrlContext) updateRoutine(prevEvent model.IEvent) {
 	for {
-		time.Sleep(time.Minute)
+		time.Sleep(10 * time.Second)
 		if c.replenishFeedIfNew(prevEvent) {
 			return
 		}
+		fmt.Println("same ev..")
 	}
 }
 
