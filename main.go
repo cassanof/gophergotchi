@@ -1,11 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 
-	"github.com/elleven11/gophergotchi/stats"
+	"github.com/elleven11/gophergotchi/ctrl"
+	"github.com/elleven11/gophergotchi/model"
 	"github.com/joho/godotenv"
 )
 
@@ -15,8 +15,8 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	rcontext := stats.MakeReqContext(os.Getenv("API_KEY"), os.Getenv("USERNAME"))
+	rcontext := model.MakeReqContext(os.Getenv("API_KEY"), os.Getenv("USERNAME"))
+	ctrl := ctrl.MakeController(rcontext, "cassanof")
 
-	// now do something with s3 or whatever
-	fmt.Printf("%v", rcontext.GetFeedByUser("cassanof"))
+	ctrl.Run()
 }
