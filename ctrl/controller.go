@@ -25,10 +25,8 @@ func (c CtrlContext) Run() {
 	for {
 		select {
 		case ev := <-c.evFeed:
-			if ev != nil {
-				fmt.Printf("%v\n", ev.GetDate())
-				prevEvent = ev
-			}
+			fmt.Printf("%v\n", ev.GetDate())
+			prevEvent = ev
 		default:
 			c.updateRoutine(prevEvent)
 		}

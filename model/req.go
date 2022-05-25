@@ -54,9 +54,11 @@ func (r ReqContext) GetFeedByUser(user string) EventFeed {
 
 	feed := make(EventFeed, 67)
 
-	// dump list into channel
+	// dump list into channel, only non-nil elements
 	for _, e := range events {
-		feed <- e
+		if e != nil {
+			feed <- e
+		}
 	}
 
 	return feed
