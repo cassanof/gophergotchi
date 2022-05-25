@@ -52,7 +52,7 @@ func (r ReqContext) GetFeedByUser(user string) EventFeed {
 	}
 	wg.Wait()
 
-	feed := make(EventFeed, 67)
+	feed := make(EventFeed)
 
 	// dump list into channel, only non-nil elements
 	for _, e := range events {
